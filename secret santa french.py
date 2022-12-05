@@ -21,12 +21,12 @@ for i in noms:
         i = i[:-1]
         if i[-1] == "m":
             i = i[:-1]
-            a = f"Cher {i},\n" #french: in order to distinguish between men and women
+            a = f"Cher {i},\n" #French: in order to distinguish between men and women
         else:
             i = i[:-1]
             a = f"Chère {i},\n"
     if protégés[j].startswith(tuple(vowels)):
-        print (f"{a}{b} {c} d'{protégés[j]}.\n{d}") #french: in order to apply the correct spelling for vowels with "de (consonant)" or "d'(vowel)"
+        print (f"{a}{b} {c} d'{protégés[j]}.\n{d}") #French: in order to apply the correct spelling for vowels with "de (consonant)" or "d'(vowel)"
     else:
         print (f"{a}{b} {c} de {protégés[j]}.\n{d}")
     protégés.pop(j)
