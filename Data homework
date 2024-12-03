@@ -1,0 +1,125 @@
+from collections import Counter
+
+class Data:
+    def __init__(self, train_file, dev_file, num_words):
+        # Initialize by reading and processing data from the specified files
+        self.trainSentences = self._read_data(train_file)
+        self.devSentences = self._read_data(dev_file)
+
+        # Count word occurrences in training sentences and extract most common words (num_words)
+        self.word_counts = Counter(word for words, _ in self.trainSentences for word in words)
+        self.most_common_words = [word for word, _ in self.word_counts.most_common(num_words)]
+
+        # Assign indices to words, starting from 1, with 0 reserved for <UNK> (unknown word)
+        self.word2idx = {word: idx + 1 for idx, word in enumerate(self.most_common_words)}
+        self.word2idx['<UNK>'] = 0
+
+        # Extract unique tags from training sentences and assign indices to each tag
+        self.tag_set = set(tag for _, tags in self.trainSentences for tag in tags)
+        self.tag2idx = {tag: idx + 1 for idx, tag in enumerate(self.tag_set)}
+        self.tag2idx['<UNK>'] = 0
+
+        # Create reverse mapping from tag indices to tags and store the number of tags
+        self.idx2tag = {idx: tag for tag, idx in self.tag2idx.items()}
+        self.num_tags = len(self.tag2idx)
+
+    def _read_data(self, file_path):
+        # Function to read and parse data from a file into a list of sentences
+        sentences = []
+        with open(file_path, 'r', encoding='utf-8') as f:
+            sentence = ([], [])  # Initialize an empty tuple for words and tags
+            for line in f:
+                try:
+                    if line.strip():  # Non-empty line
+                        word, tag = line.strip().split('\t')
+                        sentence[0].append(word)  # Append word to the words list
+                        sentence[1].append(tag)    # Append tag to the tags list
+                    else:  # Empty line indicates end of sentence
+                        if sentence[0]:  # Check if there are words in the sentence
+                            sentences.append(tuple(sentence))  # Append tuple of words and tags
+                            sentence = ([], [])  # Reset sentence tuple
+                except ValueError:
+                    print(f"Error reading line: {line.strip()}; Please use a tab-separated format.")
+                    continue
+            if sentence[0]:  # Add the last sentence if the file does not end with a newline
+                sentences.append(tuple(sentence))
+        return sentences
+
+    def words2IDs(self, words):
+        # Convert a list of words to a list of corresponding indices using word2idx mapping
+        return [self.word2idx.get(word, 0) for word in words]
+
+    def tags2IDs(self, tags):
+        # Convert a list of tags to a list of corresponding indices using tag2idx mapping
+        return [self.tag2idx.get(tag, 0) for tag in tags]
+
+    def IDs2tags(self, ids):
+        # Convert a list of tag indices back to a list of corresponding tags using idx2tag mapping
+        return [self.idx2tag.get(idx, '<UNK>') for idx in ids]
+
+    def run_test(self):
+        try:
+            # Verify most common words and tags
+            assert isinstance(self.most_common_words, list), "most_common_words should be a list"
+            assert isinstance(self.tag_set, set), "tag_set should be a set"
+            assert isinstance(self.num_tags, int), "num_tags should be an integer"
+
+            # Get a sample of known words and tags from the training data
+            known_words = [word for words, _ in self.trainSentences for word in words][:10]
+            known_tags = [tag for _, tags in self.trainSentences for tag in tags][:10]
+
+            # Verify that words2IDs returns correct indices for known words
+            words_ids = self.words2IDs(known_words)
+            assert all(idx >= 0 for idx in words_ids), "Known words should have non-negative indices"
+
+            # Verify that tags2IDs returns correct indices for known tags
+            tags_ids = self.tags2IDs(known_tags)
+            assert all(idx >= 0 for idx in tags_ids), "Known tags should have non-negative indices"
+
+            # Verify that IDs2tags returns correct tags for known tag IDs
+            tag_indices_to_test = tags_ids[:5]
+            tags_from_ids = self.IDs2tags(tag_indices_to_test)
+            assert tags_from_ids == known_tags[:5], "IDs2tags should return the original tags"
+
+            # Test with unknown words and tags
+            unknown_words = ["NonExistentWord1", "NonExistentWord2"]
+            unknown_words_ids = self.words2IDs(unknown_words)
+            assert all(idx == 0 for idx in unknown_words_ids), "Unknown words should map to index 0"
+
+            unknown_tags = ["NonExistentTag1", "NonExistentTag2"]
+            unknown_tags_ids = self.tags2IDs(unknown_tags)
+            assert all(idx == 0 for idx in unknown_tags_ids), "Unknown tags should map to index 0"
+
+            # Test with empty input
+            empty_words_ids = self.words2IDs([])
+            empty_tags_ids = self.tags2IDs([])
+            assert empty_words_ids == [], "Empty word list should return an empty ID list"
+            assert empty_tags_ids == [], "Empty tag list should return an empty ID list"
+
+            # Verify round-trip conversion (tags to IDs and back to tags)
+            ids = self.tags2IDs(known_tags)
+            converted_tags = self.IDs2tags(ids)
+            assert known_tags == converted_tags, "Round-trip tag conversion failed"
+
+            # Test reading sentences from files
+            assert isinstance(self.trainSentences, list), "trainSentences should be a list"
+            assert isinstance(self.devSentences, list), "devSentences should be a list"
+
+            print("All tests passed successfully.")
+
+        except AssertionError as e:
+            print(f"AssertionError: {str(e)}")
+        except Exception as e:
+            print(f"Error in Data module test: {str(e)}")
+
+if __name__ == "__main__":
+    # Example files and parameters
+    trainfile = 'train.tagged'
+    devfile = 'dev.tagged'
+    numWords = 10
+
+    # Create an instance of the Data class
+    data = Data(trainfile, devfile, numWords)
+
+    # Test run
+    data.run_test()
